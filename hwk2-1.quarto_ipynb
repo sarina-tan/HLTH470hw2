@@ -1,0 +1,254 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "---\n",
+        "title: \"Homework 2\"\n",
+        "subtitle: \"Research Methods, Spring 2025\"\n",
+        "author: \"Sarina Tan\"\n",
+        "format:\n",
+        "  pdf:\n",
+        "    output-file: \"tan-s-hwk2-1\"\n",
+        "    output-ext:  \"pdf\"\n",
+        "execute:\n",
+        "    echo: false\n",
+        "    header-includes:\n",
+        "      - \\usepackage{float}\n",
+        "      - \\floatplacement{table}{H}\n",
+        "---\n",
+        "\n",
+        "# The link to my repository: \n",
+        "# 1. Provide a table of the count of plans under each plan type\n"
+      ],
+      "id": "e5af97cb"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "import os\n",
+        "import pandas as pd\n",
+        "import matplotlib.pyplot as plt\n",
+        "import seaborn as sns\n",
+        "import numpy as np \n",
+        "from IPython.display import Markdown, display\n",
+        "import warnings\n",
+        "warnings.simplefilter('ignore')\n",
+        "\n",
+        "# Read output datasets\n",
+        "final_hcris_data = pd.read_csv('/Users/sarinatan/Desktop/HLTH470/homework2/submission1/data-code/output/HCRIS_Data.csv')"
+      ],
+      "id": "fc557fee",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "#  1. How many hospitals filed more than one report in the same year? Show your answer as a line graph of the number of hospitals over time."
+      ],
+      "id": "5050698a"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# Count the number of reports per hospital per year\n",
+        "report_counts = final_hcris_data.groupby(['year', 'provider_number']).size().reset_index(name='report_count')\n",
+        "\n",
+        "# Filter hospitals that filed more than one report in the same year\n",
+        "multiple_reports = report_counts[report_counts['report_count'] > 1]\n",
+        "\n",
+        "# Count the number of hospitals per year with multiple reports\n",
+        "hospitals_per_year = multiple_reports.groupby('year').size().reset_index(name='num_hospitals')\n",
+        "\n",
+        "# Plot the result as a line graph\n",
+        "plt.figure(figsize=(10, 6))\n",
+        "plt.plot(hospitals_per_year['year'], hospitals_per_year['num_hospitals'], marker='o', linestyle='-', color='blue')\n",
+        "plt.title('Number of Hospitals Filing More Than One Report per Year')\n",
+        "plt.xlabel('Year')\n",
+        "plt.ylabel('Number of Hospitals')\n",
+        "plt.grid(True)\n",
+        "plt.show()"
+      ],
+      "id": "8acc8126",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# 2. After removing/combining multiple reports, how many unique hospital IDs (Medicare provider numbers) exist in the data?"
+      ],
+      "id": "61e6133b"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# Count the number of unique hospitals with multiple reports per year\n",
+        "num_hospitals_multiple_reports = hospitals_per_year['num_hospitals'].sum()\n",
+        "print(num_hospitals_multiple_reports)\n",
+        "\n",
+        "# Get the number of unique hospital IDs after combining multiple reports\n",
+        "unique_hospitals = final_hcris_data['provider_number'].nunique()\n",
+        "print(unique_hospitals)"
+      ],
+      "id": "33c32bc7",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# 3. What is the distribution of total charges (tot_charges in the data) in each year? "
+      ],
+      "id": "7b21d348"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# Plot distribution of total charges by year using a violin plot\n",
+        "plt.figure(figsize=(14, 8))\n",
+        "sns.violinplot(x='year', y='tot_charges', data=final_hcris_data, scale='width', inner='quartile', cut=0)\n",
+        "plt.title('Distribution of Total Charges by Year')\n",
+        "plt.xlabel('Year')\n",
+        "plt.ylabel('Total Charges')\n",
+        "plt.xticks(rotation=45)\n",
+        "plt.grid(True, linestyle='--', alpha=0.5)\n",
+        "plt.show()\n",
+        "\n",
+        "num_hospitals_multiple_reports, unique_hospitals"
+      ],
+      "id": "cbef9bca",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# 5. Calculate the average price among penalized versus non-penalized hospitals."
+      ],
+      "id": "2b18fa96"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# Filter for 2012\n",
+        "df_2012 = final_hcris_data[final_hcris_data['year'] == 2012]\n",
+        "\n",
+        "# Define penalty as whether the sum of HRRP and HVBP amounts is negative\n",
+        "df_2012['penalty'] = (df_2012['hrrp_payment'] + df_2012['hvbp_payment']) < 0\n",
+        "\n",
+        "# Calculate estimated prices\n",
+        "df_2012['discount_factor'] = 1 - (df_2012['tot_discounts'] / df_2012['tot_charges'])\n",
+        "df_2012['price_num'] = (df_2012['ip_charges'] + df_2012['icu_charges'] + \n",
+        "                        df_2012['ancillary_charges']) * df_2012['discount_factor'] - df_2012['tot_mcare_payment']\n",
+        "df_2012['price_denom'] = df_2012['tot_discharges'] - df_2012['mcare_discharges']\n",
+        "df_2012['estimated_price'] = df_2012['price_num'] / df_2012['price_denom']\n",
+        "\n",
+        "# Remove negative prices and extreme outliers\n",
+        "df_cleaned = df_2012[(df_2012['estimated_price'] > 0) & \n",
+        "                     (df_2012['estimated_price'] < df_2012['estimated_price'].quantile(0.99))]\n",
+        "\n",
+        "# Calculate average price among penalized vs non-penalized hospitals\n",
+        "avg_price_penalty = df_cleaned.groupby('penalty')['estimated_price'].mean()\n",
+        "\n",
+        "print(avg_price_penalty)"
+      ],
+      "id": "348efdaf",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# 6. Split hospitals into quartiles based on bed size. To do this, create 4 new indicator variables, where each variable is set to 1 if the hospital’s bed size falls into the relevant quartile. Provide a table of the average price among treated/control groups for each quartile."
+      ],
+      "id": "43f3a897"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# Calculate estimated prices\n",
+        "df_2012['discount_factor'] = 1 - (df_2012['tot_discounts'] / df_2012['tot_charges'])\n",
+        "df_2012['price_num'] = (df_2012['ip_charges'] + df_2012['icu_charges'] + \n",
+        "                        df_2012['ancillary_charges']) * df_2012['discount_factor'] - df_2012['tot_mcare_payment']\n",
+        "df_2012['price_denom'] = df_2012['tot_discharges'] - df_2012['mcare_discharges']\n",
+        "df_2012['estimated_price'] = df_2012['price_num'] / df_2012['price_denom']\n",
+        "\n",
+        "# Remove negative prices and extreme outliers\n",
+        "df_cleaned = df_2012[(df_2012['estimated_price'] > 0) & \n",
+        "                     (df_2012['estimated_price'] < df_2012['estimated_price'].quantile(0.99))]\n",
+        "\n",
+        "# Drop rows with NaN bed values before calculating quartiles\n",
+        "df_cleaned = df_cleaned.dropna(subset=['beds'])\n",
+        "\n",
+        "# Split hospitals into quartiles based on bed size\n",
+        "df_cleaned['bed_quartile'] = pd.qcut(df_cleaned['beds'], q=4, labels=[1, 2, 3, 4])\n",
+        "\n",
+        "# Create indicator variables for each quartile\n",
+        "df_cleaned['Q1'] = (df_cleaned['bed_quartile'] == 1).astype(int)\n",
+        "df_cleaned['Q2'] = (df_cleaned['bed_quartile'] == 2).astype(int)\n",
+        "df_cleaned['Q3'] = (df_cleaned['bed_quartile'] == 3).astype(int)\n",
+        "df_cleaned['Q4'] = (df_cleaned['bed_quartile'] == 4).astype(int)\n",
+        "\n",
+        "# Calculate the average price among treated/control groups for each quartile\n",
+        "result = df_cleaned.groupby(['bed_quartile', 'penalty'])['estimated_price'].mean().unstack()\n",
+        "\n",
+        "print(result)"
+      ],
+      "id": "1a827f03",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# 7. Find the average treatment effect using each of the following estimators, and present your results in a single table: \n",
+        "# Nearest neighbor matching (1-to-1) with inverse variance distance based on quartiles of bed size\n",
+        "# Nearest neighbor matching (1-to-1) with Mahalanobis distance based on quartiles of bed size\n",
+        "# Inverse propensity weighting, where the propensity scores are based on quartiles of bed size\n",
+        "# Simple linear regression, adjusting for quartiles of bed size using dummy variables and appropriate interactions as discussed in class\n",
+        "\n",
+        "# I do not know \n",
+        "\n",
+        "\n",
+        "# 8. With these different treatment effect estimators, are the results similar, identical, very different?\n",
+        "\n",
+        "# I do not know \n",
+        "\n",
+        "# 9. Do you think you’ve estimated a causal effect of the penalty? Why or why not? (just a couple of sentences)\n",
+        "\n",
+        "# idk my data is NaN\n",
+        "\n",
+        "\n",
+        "# 10. Briefly describe your experience working with these data (just a few sentences). Tell me one thing you learned and one thing that really aggravated or surprised you.\n",
+        "\n",
+        "# My experience working with this data was a bit frustrating. The data took a long time to load onto my laptop as well as processing to make the new cleaned csv files. One thing that I learned is that with a lot of data, there are also a lot of blanks that need to be filled in and/or removed while merging files together. While I was able to make the final HCRIS data pretty smoothly, it was aggravating to then see that there were still blanks and spots that said NaN that made me unable to analyze it. "
+      ],
+      "id": "4ee0d7c1"
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "name": "python3",
+      "language": "python",
+      "display_name": "Python 3 (ipykernel)",
+      "path": "/Users/sarinatan/anaconda3/share/jupyter/kernels/python3"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}
