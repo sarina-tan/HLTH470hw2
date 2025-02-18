@@ -1,3 +1,5 @@
+## Sarina Tan
+## Python file to read HCRIS data (1996 version)
 import pandas as pd
 import warnings
 warnings.simplefilter('ignore')
@@ -30,7 +32,7 @@ for year in range(1998, 2012):
     numeric_path = f"/Users/sarinatan/Desktop/HLTH470hw2/data/HCRIS_v1996/HospitalFY{year}/hosp_{year}_NMRC.CSV"
     report_path = f"/Users/sarinatan/Desktop/HLTH470hw2/data/HCRIS_v1996/HospitalFY{year}/hosp_{year}_RPT.CSV"
 
-    HCRIS_alpha = pd.read_csv(alpha_path, dtype=str, names=['RPT_REC_NUM', 'WKSHT_CD', 'LINE_NUM', 'CLMN_NUM', 'ITM_VAL_NUM'])
+    HCRIS_alpha = pd.read_csv(alpha_path, names=['RPT_REC_NUM', 'WKSHT_CD', 'LINE_NUM', 'CLMN_NUM', 'ITM_VAL_NUM'], dtype=str)
     HCRIS_numeric = pd.read_csv(numeric_path, names=['RPT_REC_NUM', 'WKSHT_CD', 'LINE_NUM', 'CLMN_NUM', 'ITM_VAL_NUM'], dtype=str)
     HCRIS_report = pd.read_csv(report_path, names=['RPT_REC_NUM', 'PRVDR_CTRL_TYPE_CD', 'PRVDR_NUM', 'NPI',
                                                    'RPT_STUS_CD', 'FY_BGN_DT', 'FY_END_DT', 'PROC_DT',
