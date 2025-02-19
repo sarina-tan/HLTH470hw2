@@ -53,9 +53,11 @@ for year in range(1998, 2012):
                          (hcris_data['CLMN_NUM'] == row['CLMN_NUM'])][['RPT_REC_NUM', 'ITM_VAL_NUM']]
         val.columns = ['report', row['variable']]
         final_reports = final_reports.merge(val, on='report', how='left')
-    if row['source'] == 'numeric':
-        final_reports[row['variable']] = final_reports[row['variable']].astype(float)
+
+        if row['source'] == 'numeric':
+            final_reports[row['variable']] = final_reports[row['variable']].astype(float)
   
         final_hcris_v1996 = pd.concat([final_hcris_v1996, final_reports], ignore_index=True)
+
 # Save final dataset
 final_hcris_v1996.to_csv('/Users/sarinatan/Desktop/HLTH470hw2/submission1/data-code/output/HCRIS_v1996.csv', index=False)

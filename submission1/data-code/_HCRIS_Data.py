@@ -8,13 +8,21 @@ from IPython.display import Markdown, display
 import warnings
 warnings.simplefilter('ignore')
 
+import os
+
+print(os.getcwd())
+
+print(os.path.exists('submission1/data-code/output/HCRIS_v1996.csv'))
+print(os.path.exists('submission1/data-code/output/HCRIS_v2010.csv'))
+
+input("input to continue")
 # Call individual scripts -------------------------------------------------
-exec(open('/Users/sarinatan/Desktop/HLTH470/homework2/submission1/data-code/H1_HCRISv1996.py').read())
-exec(open('/Users/sarinatan/Desktop/HLTH470/homework2/submission1/data-code/H2_HCRISv2010.py').read())
+exec(open('/Users/sarinatan/Desktop/HLTH470hw2/submission1/data-code/H1_HCRISv1996.py').read())
+exec(open('/Users/sarinatan/Desktop/HLTH470hw2/submission1/data-code/H2_HCRISv2010.py').read())
 
 # Read and combine data ---------------------------------------------------
-final_hcris_v1996 = pd.read_csv('homework2/submission1/data-code/output/HCRIS_v1996.csv')
-final_hcris_v2010 = pd.read_csv('homework2/submission1/data-code/output/HCRIS_v2010.csv')
+final_hcris_v1996 = pd.read_csv('submission1/data-code/output/HCRIS_v1996.csv')
+final_hcris_v2010 = pd.read_csv('submission1/data-code/output/HCRIS_v2010.csv')
 
 
 # Create missing variables for columns introduced in v2010
@@ -114,5 +122,5 @@ final_hcris_data = final_hcris_data.rename(columns={'fyear': 'year'}).sort_value
 
 
 # Save final data ---------------------------------------------------------
-final_hcris_data.to_csv('/Users/sarinatan/Desktop/HLTH470/homework2/submission1/data-code/output/HCRIS_Data.csv', index=False)
+final_hcris_data.to_csv('/Users/sarinatan/Desktop/HLTH470hw2/submission2/data-code/output/HCRIS_Data.csv', index=False)
 

@@ -32,14 +32,14 @@ final_hcris_v2010 = pd.DataFrame()
 
 for year in range(2010, 2018):
     print(f"Processing year: {year}")
-    hcris_alpha = pd.read_csv(f"/Users/sarinatan/Desktop/HLTH470/homework2/data/HCRIS_v2010/HospitalFY{year}/hosp10_{year}_ALPHA.CSV", 
-                              names=['RPT_REC_NUM','WKSHT_CD','LINE_NUM','CLMN_NUM','ITM_VAL_NUM'])
-    hcris_numeric = pd.read_csv(f"/Users/sarinatan/Desktop/HLTH470/homework2/data/HCRIS_v2010/HospitalFY{year}/hosp10_{year}_NMRC.CSV", 
-                                names=['RPT_REC_NUM','WKSHT_CD','LINE_NUM','CLMN_NUM','ITM_VAL_NUM'])
-    hcris_report = pd.read_csv(f"/Users/sarinatan/Desktop/HLTH470/homework2/data/HCRIS_v2010/HospitalFY{year}/hosp10_{year}_RPT.CSV", 
+    hcris_alpha = pd.read_csv(f"/Users/sarinatan/Desktop/HLTH470hw2/data/HCRIS_v2010/HospitalFY{year}/hosp10_{year}_ALPHA.CSV", 
+                              names=['RPT_REC_NUM','WKSHT_CD','LINE_NUM','CLMN_NUM','ITM_VAL_NUM'], dtype=str)
+    hcris_numeric = pd.read_csv(f"/Users/sarinatan/Desktop/HLTH470hw2/data/HCRIS_v2010/HospitalFY{year}/hosp10_{year}_NMRC.CSV", 
+                                names=['RPT_REC_NUM','WKSHT_CD','LINE_NUM','CLMN_NUM','ITM_VAL_NUM'], dtype=str)
+    hcris_report = pd.read_csv(f"/Users/sarinatan/Desktop/HLTH470hw2/data/HCRIS_v2010/HospitalFY{year}/hosp10_{year}_RPT.CSV", 
                                names=['RPT_REC_NUM','PRVDR_CTRL_TYPE_CD','PRVDR_NUM','NPI','RPT_STUS_CD','FY_BGN_DT',
                                       'FY_END_DT','PROC_DT','INITL_RPT_SW','LAST_RPT_SW','TRNSMTL_NUM','FI_NUM',
-                                      'ADR_VNDR_CD','FI_CREAT_DT','UTIL_CD','NPR_DT','SPEC_IND','FI_RCPT_DT'])
+                                      'ADR_VNDR_CD','FI_CREAT_DT','UTIL_CD','NPR_DT','SPEC_IND','FI_RCPT_DT'], dtype=str)
     
     final_reports = hcris_report[['RPT_REC_NUM', 'PRVDR_NUM', 'NPI', 'FY_BGN_DT', 'FY_END_DT', 'PROC_DT', 'FI_CREAT_DT', 'RPT_STUS_CD']]
     final_reports.columns = ['report', 'provider_number', 'npi', 'fy_start', 'fy_end', 'date_processed', 'date_created', 'status']
@@ -52,7 +52,9 @@ for year in range(2010, 2018):
                          (hcris_data['CLMN_NUM'] == row['CLMN_NUM'])]
         val = val[['RPT_REC_NUM', 'ITM_VAL_NUM']].rename(columns={'RPT_REC_NUM': 'report', 'ITM_VAL_NUM': row['variable']})
         final_reports = final_reports.merge(val, on='report', how='left')
+        if row['source'] == 'numeric':
+            final_reports[row['variable']] = final_reports[row['variable']].astype(float)
     
     final_hcris_v2010 = pd.concat([final_hcris_v2010, final_reports], ignore_index=True)
 
-final_hcris_v2010.to_csv("/Users/sarinatan/Desktop/HLTH470/homework2/submission1/data-code/output/HCRIS_v2010.csv", index=False)
+final_hcris_v2010.to_csv("/Users/sarinatan/Desktop/HLTH470hw2/submission1/data-code/output/HCRIS_v2010.csv", index=False)
