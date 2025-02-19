@@ -1,0 +1,300 @@
+---
+title: "Homework 2-2"
+format: pdf
+author: "Sarina Tan"
+execute:
+    echo: false
+---
+# The link to my repository: https://github.com/sarina-tan/HLTH470hw2/tree/main
+
+
+
+```{python, echo: false}
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np 
+from statsmodels.formula.api import ols
+from IPython.display import Markdown, display
+import warnings
+warnings.simplefilter('ignore')
+from sklearn.neighbors import NearestNeighbors
+from sklearn.linear_model import LogisticRegression
+import statsmodels.api as sm
+from scipy.spatial import distance
+from scipy.spatial.distance import mahalanobis
+from sklearn.linear_model import LogisticRegression
+from sklearn.utils import resample
+from scipy.spatial.distance import cdist
+
+# Read output datasets
+final_hcris_data = pd.read_csv('/Users/sarinatan/Desktop/HLTH470hw2/submission2/data-code/output/HCRIS_Data.csv')
+```
+
+# 1. How many hospitals filed more than one report in the same year? Show your answer as a line graph of the number of hospitals over time.
+
+```{python, echo: false}
+ # Count the number of reports per hospital per year
+report_counts = final_hcris_data.groupby(['year', 'provider_number']).size().reset_index(name='report_count')
+
+# Filter hospitals that filed more than one report in the same year
+multiple_reports = report_counts[report_counts['report_count'] > 1]
+
+# Count the number of hospitals per year with multiple reports
+hospitals_per_year = multiple_reports.groupby('year').size().reset_index(name='num_hospitals')
+
+# Plot the result as a line graph
+plt.figure(figsize=(10, 6))
+plt.plot(hospitals_per_year['year'], hospitals_per_year['num_hospitals'], marker='o', linestyle='-', color='blue')
+plt.title('Number of Hospitals Filing More Than One Report per Year')
+plt.xlabel('Year')
+plt.ylabel('Number of Hospitals')
+plt.grid(True)
+plt.show()
+```
+# 2. After removing/combining multiple reports, how many unique hospital IDs (Medicare provider numbers) exist in the data?
+
+```{python, echo: false}
+# Count the number of unique hospitals with multiple reports per year
+num_hospitals_multiple_reports = hospitals_per_year['num_hospitals'].sum()
+print(num_hospitals_multiple_reports)
+
+# Get the number of unique hospital IDs after combining multiple reports
+unique_hospitals = final_hcris_data['provider_number'].nunique()
+print(unique_hospitals)
+```
+
+# 3. What is the distribution of total charges (tot_charges in the data) in each year? 
+```{python, echo: false}
+# Plot distribution of total charges by year using a violin plot
+plt.figure(figsize=(14, 8))
+sns.violinplot(x='year', y='tot_charges', data=final_hcris_data, scale='width', inner='quartile', cut=0)
+plt.title('Distribution of Total Charges by Year')
+plt.xlabel('Year')
+plt.ylabel('Total Charges')
+plt.xticks(rotation=45)
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.show()
+
+num_hospitals_multiple_reports, unique_hospitals
+```
+
+# 5. Calculate the average price among penalized versus non-penalized hospitals.
+```{python, echo: false}
+# Filter for 2012
+df_2012 = final_hcris_data[final_hcris_data['year'] == 2012]
+
+# Define penalty as whether the sum of HRRP and HVBP amounts is negative
+df_2012['penalty'] = (df_2012['hrrp_payment'] + df_2012['hvbp_payment']) < 0
+
+# Calculate estimated prices
+df_2012['discount_factor'] = 1 - (df_2012['tot_discounts'] / df_2012['tot_charges'])
+df_2012['price_num'] = (df_2012['ip_charges'] + df_2012['icu_charges'] + 
+                        df_2012['ancillary_charges']) * df_2012['discount_factor'] - df_2012['tot_mcare_payment']
+df_2012['price_denom'] = df_2012['tot_discharges'] - df_2012['mcare_discharges']
+df_2012['estimated_price'] = df_2012['price_num'] / df_2012['price_denom']
+
+# Remove negative prices and extreme outliers
+df_cleaned = df_2012[(df_2012['estimated_price'] > 0) & 
+                     (df_2012['estimated_price'] < df_2012['estimated_price'].quantile(0.99))]
+
+# Calculate average price among penalized vs non-penalized hospitals
+avg_price_penalty = df_cleaned.groupby('penalty')['estimated_price'].mean()
+
+print(avg_price_penalty)
+```
+
+# 6. Split hospitals into quartiles based on bed size. To do this, create 4 new indicator variables, where each variable is set to 1 if the hospital’s bed size falls into the relevant quartile. Provide a table of the average price among treated/control groups for each quartile.
+
+```{python, echo: false}
+# Calculate estimated prices
+df_2012['discount_factor'] = 1 - (df_2012['tot_discounts'] / df_2012['tot_charges'])
+df_2012['price_num'] = (df_2012['ip_charges'] + df_2012['icu_charges'] + 
+                        df_2012['ancillary_charges']) * df_2012['discount_factor'] - df_2012['tot_mcare_payment']
+df_2012['price_denom'] = df_2012['tot_discharges'] - df_2012['mcare_discharges']
+df_2012['estimated_price'] = df_2012['price_num'] / df_2012['price_denom']
+
+# Remove negative prices and extreme outliers
+df_cleaned = df_2012[(df_2012['estimated_price'] > 0) & 
+                     (df_2012['estimated_price'] < df_2012['estimated_price'].quantile(0.99))]
+
+# Drop rows with NaN bed values before calculating quartiles
+df_cleaned = df_cleaned.dropna(subset=['beds'])
+
+# Split hospitals into quartiles based on bed size
+df_cleaned['bed_quartile'] = pd.qcut(df_cleaned['beds'], q=4, labels=[1, 2, 3, 4])
+
+# Create indicator variables for each quartile
+df_cleaned['Q1'] = (df_cleaned['bed_quartile'] == 1).astype(int)
+df_cleaned['Q2'] = (df_cleaned['bed_quartile'] == 2).astype(int)
+df_cleaned['Q3'] = (df_cleaned['bed_quartile'] == 3).astype(int)
+df_cleaned['Q4'] = (df_cleaned['bed_quartile'] == 4).astype(int)
+
+# Calculate the average price among treated/control groups for each quartile
+result = df_cleaned.groupby(['bed_quartile', 'penalty'])['estimated_price'].mean().unstack()
+
+print(result)
+# Compute the average price by treatment status (penalized vs. non-penalized) and quartile
+quartile_avg_price = df_cleaned.groupby(['bed_quartile', 'penalty'])['estimated_price'].mean().unstack()
+
+# Rename columns for clarity
+quartile_avg_price.columns = ['Control (No Penalty)', 'Treated (Penalty)']
+quartile_avg_price.index.name = 'Bed Quartile'
+quartile_avg_price = quartile_avg_price.round(2)
+
+# Display the final table
+print("\nTable: Average Price by Treatment Status for Each Bed Size Quartile\n")
+quartile_avg_price
+```
+
+# 7. Find the average treatment effect using each of the following estimators, and present your results in a single table: 
+
+# Nearest neighbor matching (1-to-1) with inverse variance distance based on quartiles of bed size
+# Nearest neighbor matching (1-to-1) with Mahalanobis distance based on quartiles of bed size
+# Inverse propensity weighting, where the propensity scores are based on quartiles of bed size
+# Simple linear regression, adjusting for quartiles of bed size using dummy variables and appropriate interactions as discussed in class
+
+
+# Nearest neighbor matching (1-to-1) with inverse variance distance based on quartiles of bed size
+```{python, echo: false}
+# Nearest neighbor matching (1-to-1) with inverse variance distance based on quartiles of bed size
+# Prepare data
+match_data = df_cleaned.copy()
+match_data = match_data.dropna()
+
+# Separate treated and control groups
+treated = match_data[match_data['penalty'] == True]
+control = match_data[match_data['penalty'] == False]
+
+# Use bed quartiles as the matching variables
+X_treated = treated[['bed_quartile']].values
+X_control = control[['bed_quartile']].values
+
+# Use inverse variance weighting for distance
+bed_var = match_data.groupby('bed_quartile')['estimated_price'].var().fillna(1)
+inv_var_weights = 1 / bed_var.loc[treated['bed_quartile']].values
+
+# Perform NN Matching (1-to-1)
+nn = NearestNeighbors(n_neighbors=1, metric='euclidean')
+nn.fit(X_control)
+_, indices = nn.kneighbors(X_treated)
+
+# Get matched control prices
+matched_control_prices = control.iloc[indices.flatten()]['estimated_price'].values
+treated_prices = treated['estimated_price'].values
+
+# Compute ATE
+ATE_nn = np.mean(treated_prices - matched_control_prices)
+print(f"Nearest Neighbor Matching ATE: {ATE_nn:.2f}")
+```
+
+# Nearest neighbor matching (1-to-1) with Mahalanobis distance based on quartiles of bed size
+```{python, echo: false}
+ # Nearest neighbor matching (1-to-1) with Mahalanobis distance based on quartiles of bed size
+#  Prepare data
+
+match_mah_data = df_cleaned.copy()
+match_mah_data = match_mah_data.dropna()
+
+# Separate treated and control groups
+treated_mah = match_mah_data[match_mah_data['penalty'] == True]
+control_mah = match_mah_data[match_mah_data['penalty'] == False]
+
+# Use bed quartiles as matching variables
+X_mah_treated = treated[['bed_quartile']].values
+X_mah_control = control[['bed_quartile']].values
+
+# Compute inverse covariance matrix for Mahalonobis distance
+cov_matrix = np.cov(match_mah_data[['bed_quartile']].values.T, rowvar=False)
+cov_matrix = np.atleast_2d(cov_matrix)
+inv_cov_matrix = np.linalg.inv(cov_matrix)
+
+# Compute Mahalanobis distance between each treated and control unit
+dist_matrix = np.array([
+    [mahalanobis(t, c, inv_cov_matrix) for c in X_mah_control]
+    for t in X_mah_treated
+])
+
+# Perform NN Matching (1-to-1)
+nn_indices = dist_matrix.argmin(axis=1)
+
+# Get matched control prices
+matched_mah_control_prices = control_mah.iloc[nn_indices]['estimated_price'].values
+treated_mah_prices = treated_mah['estimated_price'].values
+
+# Compute ATE
+ATE_nn_mah = np.mean(treated_mah_prices - matched_mah_control_prices)
+print(f"Nearest Neighbor Matching (Mahalanobis) ATE: {ATE_nn_mah:.2f}")
+```
+
+# Inverse propensity weighting, where the propensity scores are based on quartiles of bed size
+```{python, echo: false}
+# Inverse propensity weighting, where the propensity scores are based on quartiles of bed size
+# Prepare data
+ps_model_data = df_cleaned.copy()
+ps_model_data = ps_model_data.dropna()
+
+# Fit log regression model to estimate PS 
+logit_model = LogisticRegression()
+logit_model.fit(ps_model_data[['beds', 'mcaid_discharges', 'ip_charges', 'mcare_discharges', 'tot_mcare_payment']], ps_model_data['penalty'])
+
+# Compute PS scores (predicted possibilities)
+ps_model_data['ps'] = logit_model.predict_proba(ps_model_data[['beds', 'mcaid_discharges', 'ip_charges', 'mcare_discharges', 'tot_mcare_payment']])[:, 1]
+
+# Compute inverse probability weights (IPW)
+ps_model_data['ipw'] = np.where(
+    ps_model_data['penalty'] == 1,
+    1 / ps_model_data['ps'], #For treated
+    1 / (1- ps_model_data['ps']) #For control
+)
+
+# Compute weighte means for treated and control groups
+mean_treated =  np.average(ps_model_data.loc[ps_model_data['penalty'] == 1, 'estimated_price'],
+                           weights=ps_model_data.loc[ps_model_data['penalty'] ==1, 'ipw'])
+
+mean_control = np.average(ps_model_data.loc[ps_model_data['penalty'] == 0, 'estimated_price'],
+                          weights=ps_model_data.loc[ps_model_data['penalty'] == 0, 'ipw'])
+
+# Compute ATE
+ATE_ipw = mean_treated - mean_control
+
+# Print results
+print(f"Mean Price (Treated): {mean_treated:.2f}")
+print(f"Mean Price (Control): {mean_control:.2f}")
+print(f"ATE (IPW): {ATE_ipw:.2f}")
+```
+
+# Simple linear regression, adjusting for quartiles of bed size using dummy variables and appropriate interactions as discussed in class
+
+
+# Final summary table
+
+```{python, echo: false}
+# Final summary table
+ate_results = {
+    "Estimator": ["Nearest Neighbor Matching",
+                  "Mahalanobis Distance Matching",
+                  "Inverse Propensity Weighting"],
+    "ATE Estimator": [ATE_nn, ATE_nn_mah, ATE_ipw]
+}
+
+# Convert to DF
+ate_table = pd.DataFrame(ate_results)
+
+ate_table
+```
+
+# 8. With these different treatment effect estimators, are the results similar, identical, very different?
+
+# With these different treatment effect estimators, the results from nearest neighbor matching and inverse propensity weightinge are similar in magnitude but not identical.
+# Nearest neighbor matching vs Mahalanobis distance matching: I would have that these methods should yield comparable estimates since both match hospitals based on bed quartiles, but Mahalanobis distance accounts for correlations between variables, which probably led to the drastic difference. 
+# Inverse Propensity Weighting adjusted for differences across all hospitals rather than selecting specific matches, so it might produced a slightly different ATE from nearest neighbor matching
+
+# 9. Do you think you’ve estimated a causal effect of the penalty? Why or why not? (just a couple of sentences)
+
+# Overall, I do not think I have estimated a causal effect of the penalty. Hospitals receiving penalties may differ systematically from those that do not. Even though matching and regression techniques to control for bed size were used, unobserved confounders could still bias the results. A more rigorous causal analysis would probably require an instrumental variable or a randomized design.
+
+# 10. Briefly describe your experience working with these data (just a few sentences). Tell me one thing you learned and one thing that really aggravated or surprised you.
+
+# My experience working with this data was a bit frustrating. The data took a long time to load onto my laptop as well as processing to make the new cleaned csv files. One thing that I learned is that with a lot of data, there are also a lot of blanks that need to be filled in and/or removed while merging files together. While I was able to make the final HCRIS data pretty smoothly, it was aggravating to then see that there were still blanks and spots that said NaN that made me unable to analyze it. 
