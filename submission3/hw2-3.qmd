@@ -60,6 +60,22 @@ plt.show()
 # Get the number of unique hospital IDs after combining multiple reports
 unique_hospitals = final_hcris_data['provider_number'].nunique()
 print(f'The number of unique hospital IDs is: {unique_hospitals}')
+
+hosp_count = final_hcris_data.groupby('year').size().reset_index(name='hosp_count')
+
+# Count of unique hospitals per year
+plt.figure(figsize=(8, 5))
+plt.plot(hosp_count['year'].values, hosp_count['hosp_count'].values,
+         marker='o', linestyle='-', color='blue')
+plt.title('Figure 2: Unique Hospital IDs', fontsize=14)
+plt.xticks(ticks=hospitals_per_year['year'].astype(int), labels=hospitals_per_year['year'].astype(int))
+years = hospitals_per_year['year'].astype(int)
+plt.xticks(ticks=years[::3], labels=years[::3])
+plt.xlabel('Fiscal Year')
+plt.ylabel('Number of Hospital IDs')
+plt.ylim(0, hosp_count['hosp_count'].max() * 1.1)
+plt.grid(axis='y', color='gray', linestyle='--', alpha=0.5)
+plt.show()
 ```
 
 {{< pagebreak >}}
@@ -295,17 +311,14 @@ display(Markdown(results.to_markdown()))
 {{< pagebreak >}}
 
 # 8. With these different treatment effect estimators, are the results similar, identical, very different?
-
-# With these different treatment effect estimators, the results of the average treatment effect (ATE) were the same for all four estimators. The standard error across the four estimators slightly vary, but are still close. Nearest neighbor matching with inverse variance and nearest neighbor matching with Mahalanobis distance resulted in the same average treatment effect and standard error. 
+####### With these different treatment effect estimators, the results of the average treatment effect (ATE) were the same for all four estimators. The standard error across the four estimators slightly vary, but are still close. Nearest neighbor matching with inverse variance and nearest neighbor matching with Mahalanobis distance resulted in the same average treatment effect and standard error. 
 
 {{< pagebreak >}}
 
 # 9. Do you think you’ve estimated a causal effect of the penalty? Why or why not? (just a couple of sentences)
-
-# Overall, I do not think I have estimated a causal effect of the penalty. Hospitals receiving penalties may differ systematically from those that do not. Even though matching and regression techniques to control for bed size were used, unobserved confounders could still bias the results. A more rigorous causal analysis would probably require an instrumental variable or a randomized design.
+####### Overall, I do not think I have estimated a causal effect of the penalty. Hospitals receiving penalties may differ systematically from those that do not. Even though matching and regression techniques to control for bed size were used, unobserved confounders could still bias the results. A more rigorous causal analysis would probably require an instrumental variable or a randomized design.
 
 {{< pagebreak >}}
 
 # 10. Briefly describe your experience working with these data (just a few sentences). Tell me one thing you learned and one thing that really aggravated or surprised you.
-
-# My experience working with this data was a bit frustrating. The data took a long time to load onto my laptop as well as processing to make the new cleaned csv files. One thing that I learned is that with a lot of data, there are also a lot of blanks that need to be filled in and/or removed while merging files together. While I was able to make the final HCRIS data pretty smoothly, it was aggravating to then see that there were still blanks and spots that said NaN that made me unable to analyze it. 
+####### My experience working with this data was a bit frustrating. The data took a long time to load onto my laptop as well as processing to make the new cleaned csv files. One thing that I learned is that with a lot of data, there are also a lot of blanks that need to be filled in and/or removed while merging files together. While I was able to make the final HCRIS data pretty smoothly, it was aggravating to then see that there were still blanks and spots that said NaN that made me unable to analyze it. 
